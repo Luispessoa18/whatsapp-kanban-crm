@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -10,7 +9,8 @@ import {
   LogOut, 
   ChevronRight,
   Kanban,
-  UserCircle
+  UserCircle,
+  MessageCircle
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
@@ -59,6 +59,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         icon: <Users className="h-5 w-5" />,
         href: '/users',
         active: location.pathname === '/users',
+      },
+      {
+        label: 'Chat Logs',
+        icon: <MessageCircle className="h-5 w-5" />,
+        href: '/chat-logs',
+        active: location.pathname === '/chat-logs',
       },
     ] : []),
   ];

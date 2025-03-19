@@ -46,3 +46,18 @@ export interface WhatsAppConfig {
   enabled: boolean;
   lastUpdated: string;
 }
+
+export interface ChatMessage {
+  id: string;
+  leadId: string;
+  userId?: string;
+  content: string;
+  timestamp: string;
+  direction: 'incoming' | 'outgoing';
+  status: 'sent' | 'delivered' | 'read' | 'failed';
+  attachments?: {
+    type: 'image' | 'document' | 'audio' | 'video';
+    url: string;
+    name?: string;
+  }[];
+}

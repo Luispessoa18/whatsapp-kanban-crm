@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Funnel, Lead, User, WhatsAppConfig } from '@/types';
+import { Funnel, Lead, User, WhatsAppConfig, ChatMessage } from '@/types';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 
@@ -9,6 +9,7 @@ interface DataContextType {
   users: User[];
   isLoading: boolean;
   whatsappConfig: WhatsAppConfig | null;
+  chatMessages: ChatMessage[];
   addFunnel: (funnel: Omit<Funnel, 'id'>) => void;
   updateFunnel: (funnel: Funnel) => void;
   deleteFunnel: (id: string) => void;
@@ -21,6 +22,8 @@ interface DataContextType {
   importLeads: (leads: Omit<Lead, 'id' | 'createdAt'>[], funnelId: string) => void;
   exportLeads: (funnelId?: string) => void;
   updateWhatsappConfig: (config: WhatsAppConfig) => void;
+  sendChatMessage: (leadId: string, content: string, attachments?: any[]) => Promise<void>;
+  getChatHistory: (leadId: string) => ChatMessage[];
 }
 
 const initialFunnels: Funnel[] = [
@@ -81,6 +84,34 @@ const initialUsers: User[] = [
   }
 ];
 
+const initialChatMessages: ChatMessage[] = [
+  {
+    id: '1',
+    leadId: '1',
+    content: 'Hello, I\'m interested in your premium plan.',
+    timestamp: new Date(Date.now() - 3600000).toISOString(),
+    direction: 'incoming',
+    status: 'read',
+  },
+  {
+    id: '2',
+    leadId: '1',
+    userId: '1',
+    content: 'Thank you for your interest! Our premium plan offers several benefits.',
+    timestamp: new Date(Date.now() - 3500000).toISOString(),
+    direction: 'outgoing',
+    status: 'delivered',
+  },
+  {
+    id: '3',
+    leadId: '2',
+    content: 'Can you send me more information about pricing?',
+    timestamp: new Date(Date.now() - 8600000).toISOString(),
+    direction: 'incoming',
+    status: 'read',
+  }
+];
+
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -89,6 +120,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [whatsappConfig, setWhatsappConfig] = useState<WhatsAppConfig | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -101,10 +133,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const storedLeads = localStorage.getItem('crm_leads');
         const storedUsers = localStorage.getItem('crm_users');
         const storedWhatsappConfig = localStorage.getItem('crm_whatsapp_config');
+        const storedChatMessages = localStorage.getItem('crm_chat_messages');
         
         setFunnels(storedFunnels ? JSON.parse(storedFunnels) : initialFunnels);
         setLeads(storedLeads ? JSON.parse(storedLeads) : initialLeads);
         setUsers(storedUsers ? JSON.parse(storedUsers) : initialUsers);
+        setChatMessages(storedChatMessages ? JSON.parse(storedChatMessages) : initialChatMessages);
         
         if (storedWhatsappConfig) {
           setWhatsappConfig(JSON.parse(storedWhatsappConfig));
@@ -125,12 +159,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('crm_funnels', JSON.stringify(funnels));
       localStorage.setItem('crm_leads', JSON.stringify(leads));
       localStorage.setItem('crm_users', JSON.stringify(users));
+      localStorage.setItem('crm_chat_messages', JSON.stringify(chatMessages));
       
       if (whatsappConfig) {
         localStorage.setItem('crm_whatsapp_config', JSON.stringify(whatsappConfig));
       }
     }
-  }, [funnels, leads, users, whatsappConfig, isLoading]);
+  }, [funnels, leads, users, whatsappConfig, chatMessages, isLoading]);
 
   const addFunnel = (funnel: Omit<Funnel, 'id'>) => {
     const newFunnel = {
@@ -304,6 +339,90 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     toast.success('WhatsApp configuration updated');
   };
 
+  const sendChatMessage = async (leadId: string, content: string, attachments: any[] = []): Promise<void> => {
+    if (!user) {
+      toast.error('You must be logged in to send messages');
+      return;
+    }
+    
+    const newMessage: ChatMessage = {
+      id: Date.now().toString(),
+      leadId,
+      userId: user.id,
+      content,
+      timestamp: new Date().toISOString(),
+      direction: 'outgoing',
+      status: 'sent',
+      attachments: attachments.length > 0 ? attachments.map(a => ({
+        type: a.type,
+        url: a.url,
+        name: a.name
+      })) : undefined
+    };
+    
+    setChatMessages(prev => [...prev, newMessage]);
+    
+    if (whatsappConfig?.enabled) {
+      console.log('Sending message to WhatsApp API:', {
+        config: whatsappConfig,
+        leadId,
+        message: content
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      setTimeout(() => {
+        setChatMessages(prev => 
+          prev.map(msg => 
+            msg.id === newMessage.id ? { ...msg, status: 'delivered' } : msg
+          )
+        );
+      }, 1500);
+    }
+    
+    setLeads(prev => 
+      prev.map(lead => 
+        lead.id === leadId ? { ...lead, lastContact: newMessage.timestamp } : lead
+      )
+    );
+    
+    if (Math.random() > 0.5) {
+      setTimeout(() => {
+        const responses = [
+          "Thank you for the information!",
+          "I'll get back to you soon.",
+          "That sounds great!",
+          "Can you provide more details?",
+          "I'm interested in learning more."
+        ];
+        
+        const autoReply: ChatMessage = {
+          id: Date.now().toString(),
+          leadId,
+          content: responses[Math.floor(Math.random() * responses.length)],
+          timestamp: new Date().toISOString(),
+          direction: 'incoming',
+          status: 'delivered'
+        };
+        
+        setChatMessages(prev => [...prev, autoReply]);
+        
+        setLeads(prev => 
+          prev.map(lead => 
+            lead.id === leadId ? { ...lead, lastContact: autoReply.timestamp } : lead
+          )
+        );
+        
+        toast.success(`New message from ${leads.find(l => l.id === leadId)?.name}`);
+      }, 5000 + Math.random() * 10000);
+    }
+  };
+
+  const getChatHistory = (leadId: string): ChatMessage[] => {
+    return chatMessages.filter(msg => msg.leadId === leadId)
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  };
+
   return (
     <DataContext.Provider
       value={{
@@ -312,6 +431,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         users,
         isLoading,
         whatsappConfig,
+        chatMessages,
         addFunnel,
         updateFunnel,
         deleteFunnel,
@@ -324,6 +444,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         importLeads,
         exportLeads,
         updateWhatsappConfig,
+        sendChatMessage,
+        getChatHistory,
       }}
     >
       {children}

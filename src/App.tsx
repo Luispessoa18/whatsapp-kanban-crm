@@ -14,6 +14,8 @@ import Leads from "@/pages/Leads";
 import Profile from "@/pages/Profile";
 import Users from "@/pages/Users";
 import WhatsAppConfig from "@/pages/WhatsAppConfig";
+import ChatPage from "@/pages/ChatPage";
+import ChatLogs from "@/pages/ChatLogs";
 import NotFound from "@/pages/NotFound";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
@@ -43,6 +45,8 @@ const App = () => (
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/users" element={<Users />} />
                 <Route path="/whatsapp-config" element={<WhatsAppConfig />} />
+                <Route path="/chat/:leadId" element={<ChatPage />} />
+                <Route path="/chat-logs" element={<ChatLogs />} />
               </Route>
               
               <Route path="*" element={<NotFound />} />
