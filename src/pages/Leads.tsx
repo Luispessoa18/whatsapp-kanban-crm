@@ -659,4 +659,4 @@ const LeadsPage: React.FC = () => {
   );
 };
 
-export default Leads;
+export default LeadsPage;
