@@ -35,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { WhatsAppConfig as WhatsAppConfigType } from '@/types';
 
 const WhatsAppConfig: React.FC = () => {
   const { isAdmin } = useAuth();
@@ -42,7 +43,7 @@ const WhatsAppConfig: React.FC = () => {
   
   const [apiUrl, setApiUrl] = useState('');
   const [apiKey, setApiKey] = useState('');
-  const [apiProvider, setApiProvider] = useState('baileys');
+  const [apiProvider, setApiProvider] = useState<WhatsAppConfigType['provider']>('baileys');
   const [isEnabled, setIsEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [testStatus, setTestStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');

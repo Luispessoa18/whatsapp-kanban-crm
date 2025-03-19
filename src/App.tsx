@@ -18,6 +18,7 @@ import ChatPage from "@/pages/ChatPage";
 import ChatLogs from "@/pages/ChatLogs";
 import NotFound from "@/pages/NotFound";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import Index from "@/pages/Index";
 
 const queryClient = new QueryClient();
 
@@ -30,7 +31,8 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<LoginPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/" element={<Index />} />
               
               <Route path="/" element={
                 <ProtectedRoute>
