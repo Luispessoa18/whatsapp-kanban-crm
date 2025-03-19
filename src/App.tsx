@@ -29,7 +29,13 @@ const App = () => (
             <Routes>
               <Route path="/" element={<LoginPage />} />
               
-              <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Outlet />
+                  </Layout>
+                </ProtectedRoute>
+              }>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/kanban" element={<KanbanBoard />} />
                 <Route path="/leads" element={<Leads />} />
