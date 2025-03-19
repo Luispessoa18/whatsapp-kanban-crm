@@ -38,3 +38,11 @@ export interface Funnel {
     url: string;
   };
 }
+
+export interface WhatsAppConfig {
+  apiUrl: string;
+  apiKey: string;
+  provider: 'baileys' | 'whatsapp-web.js' | 'venom' | 'wppconnect' | 'custom';
+  enabled: boolean;
+  lastUpdated: string;
+}

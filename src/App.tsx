@@ -13,6 +13,7 @@ import KanbanBoard from "@/pages/KanbanBoard";
 import Leads from "@/pages/Leads";
 import Profile from "@/pages/Profile";
 import Users from "@/pages/Users";
+import WhatsAppConfig from "@/pages/WhatsAppConfig";
 import NotFound from "@/pages/NotFound";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
@@ -41,6 +42,7 @@ const App = () => (
                 <Route path="/leads" element={<Leads />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/users" element={<Users />} />
+                <Route path="/whatsapp-config" element={<WhatsAppConfig />} />
               </Route>
               
               <Route path="*" element={<NotFound />} />

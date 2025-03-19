@@ -1,6 +1,5 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Funnel, Lead, User } from '@/types';
+import { Funnel, Lead, User, WhatsAppConfig } from '@/types';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 
@@ -9,6 +8,7 @@ interface DataContextType {
   leads: Lead[];
   users: User[];
   isLoading: boolean;
+  whatsappConfig: WhatsAppConfig | null;
   addFunnel: (funnel: Omit<Funnel, 'id'>) => void;
   updateFunnel: (funnel: Funnel) => void;
   deleteFunnel: (id: string) => void;
@@ -20,9 +20,9 @@ interface DataContextType {
   disconnectWhatsapp: (userId: string) => void;
   importLeads: (leads: Omit<Lead, 'id' | 'createdAt'>[], funnelId: string) => void;
   exportLeads: (funnelId?: string) => void;
+  updateWhatsappConfig: (config: WhatsAppConfig) => void;
 }
 
-// Mock data
 const initialFunnels: Funnel[] = [
   {
     id: '1',
@@ -88,24 +88,27 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [leads, setLeads] = useState<Lead[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [whatsappConfig, setWhatsappConfig] = useState<WhatsAppConfig | null>(null);
   const { user } = useAuth();
 
-  // Load mock data with a slight delay to simulate API call
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        // Simulate API delay
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Load from localStorage if available, otherwise use mock data
         const storedFunnels = localStorage.getItem('crm_funnels');
         const storedLeads = localStorage.getItem('crm_leads');
         const storedUsers = localStorage.getItem('crm_users');
+        const storedWhatsappConfig = localStorage.getItem('crm_whatsapp_config');
         
         setFunnels(storedFunnels ? JSON.parse(storedFunnels) : initialFunnels);
         setLeads(storedLeads ? JSON.parse(storedLeads) : initialLeads);
         setUsers(storedUsers ? JSON.parse(storedUsers) : initialUsers);
+        
+        if (storedWhatsappConfig) {
+          setWhatsappConfig(JSON.parse(storedWhatsappConfig));
+        }
       } catch (error) {
         console.error('Failed to load data:', error);
         toast.error('Failed to load data');
@@ -117,14 +120,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadData();
   }, []);
 
-  // Save data to localStorage whenever it changes
   useEffect(() => {
     if (!isLoading) {
       localStorage.setItem('crm_funnels', JSON.stringify(funnels));
       localStorage.setItem('crm_leads', JSON.stringify(leads));
       localStorage.setItem('crm_users', JSON.stringify(users));
+      
+      if (whatsappConfig) {
+        localStorage.setItem('crm_whatsapp_config', JSON.stringify(whatsappConfig));
+      }
     }
-  }, [funnels, leads, users, isLoading]);
+  }, [funnels, leads, users, whatsappConfig, isLoading]);
 
   const addFunnel = (funnel: Omit<Funnel, 'id'>) => {
     const newFunnel = {
@@ -141,7 +147,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const deleteFunnel = (id: string) => {
-    // Check if funnel has leads
     const funnelHasLeads = leads.some(lead => lead.funnelId === id);
     
     if (funnelHasLeads) {
@@ -182,24 +187,75 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const connectWhatsapp = async (userId: string): Promise<string> => {
-    // In a real app, this would generate a QR code URL from the backend
-    const qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=mockWhatsAppConnection" + Date.now();
-    
-    // Wait for "connection" (simulated)
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Update user's WhatsApp connection status
-    setUsers(prev => 
-      prev.map(u => 
-        u.id === userId ? { ...u, whatsappConnected: true } : u
-      )
-    );
-    
-    toast.success('WhatsApp connected successfully');
-    return qrCodeUrl;
+    if (whatsappConfig?.enabled && whatsappConfig?.apiUrl) {
+      try {
+        const response = await fetch(`${whatsappConfig.apiUrl}/qr`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${whatsappConfig.apiKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`API returned status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.qrCode) {
+          setTimeout(() => {
+            setUsers(prev => 
+              prev.map(u => 
+                u.id === userId ? { ...u, whatsappConnected: true } : u
+              )
+            );
+            toast.success('WhatsApp connected successfully');
+          }, 5000);
+          
+          return data.qrCode;
+        }
+        
+        throw new Error('No QR code received from API');
+      } catch (error) {
+        console.error('Failed to connect to WhatsApp API:', error);
+        toast.error('Failed to generate WhatsApp QR code');
+        
+        const mockQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=fallback-whatsapp-${userId}-${Date.now()}&bgcolor=255-255-255&color=25-D366`;
+        return mockQrUrl;
+      }
+    } else {
+      toast.warning('No WhatsApp API configured. Using mock QR code.');
+      
+      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=mockWhatsAppConnection-${userId}-${Date.now()}&bgcolor=255-255-255&color=25-D366`;
+      
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      setUsers(prev => 
+        prev.map(u => 
+          u.id === userId ? { ...u, whatsappConnected: true } : u
+        )
+      );
+      
+      toast.success('WhatsApp connected successfully (simulated)');
+      return qrCodeUrl;
+    }
   };
 
   const disconnectWhatsapp = (userId: string) => {
+    if (whatsappConfig?.enabled && whatsappConfig?.apiUrl) {
+      fetch(`${whatsappConfig.apiUrl}/logout`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${whatsappConfig.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ userId })
+      }).catch(error => {
+        console.error('Error disconnecting from WhatsApp API:', error);
+      });
+    }
+    
     setUsers(prev => 
       prev.map(u => 
         u.id === userId ? { ...u, whatsappConnected: false } : u
@@ -221,7 +277,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const exportLeads = (funnelId?: string) => {
-    // In a real app, this would generate a CSV/Excel file for download
     const leadsToExport = funnelId 
       ? leads.filter(lead => lead.funnelId === funnelId)
       : leads;
@@ -244,6 +299,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     toast.success(`${leadsToExport.length} leads exported successfully`);
   };
 
+  const updateWhatsappConfig = (config: WhatsAppConfig) => {
+    setWhatsappConfig(config);
+    toast.success('WhatsApp configuration updated');
+  };
+
   return (
     <DataContext.Provider
       value={{
@@ -251,6 +311,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         leads,
         users,
         isLoading,
+        whatsappConfig,
         addFunnel,
         updateFunnel,
         deleteFunnel,
@@ -262,6 +323,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         disconnectWhatsapp,
         importLeads,
         exportLeads,
+        updateWhatsappConfig,
       }}
     >
       {children}
