@@ -143,6 +143,17 @@ const WhatsAppConfig: React.FC = () => {
     }
   };
 
+  const handleProviderChange = (value: string) => {
+    // This ensures we only set valid provider values
+    if (value === 'baileys' || 
+        value === 'whatsapp-web.js' || 
+        value === 'venom' || 
+        value === 'wppconnect' || 
+        value === 'custom') {
+      setApiProvider(value);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -175,7 +186,7 @@ const WhatsAppConfig: React.FC = () => {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="api-provider">API Provider</Label>
-                <Select value={apiProvider} onValueChange={setApiProvider}>
+                <Select value={apiProvider} onValueChange={handleProviderChange}>
                   <SelectTrigger id="api-provider">
                     <SelectValue placeholder="Select provider" />
                   </SelectTrigger>
